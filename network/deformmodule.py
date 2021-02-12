@@ -12,13 +12,12 @@ class DeformableConv2d(nn.Module):
         self.inc = inchannel
         self.outc = outchannel
         self.kernel_size = kernel_size
-        if isinstance(kernel_size, int):
-            self.kernel_size = (kernel_size, kernel_size)
+        assert isinstance(kernel_size, int)
 
         self.padding = padding
         self.zero_padding = nn.ZeroPad2d(padding)
 
-        self.kernel_elnum = kernel_size(0) * kernel_size(1) # here kernel_elnum refers to the N = |R| in DCN paper
+        self.kernel_elnum = kernel_size * kernel_size # here kernel_elnum refers to the N = |R| in DCN paper
 
 
         self.offset_conv = nn.Conv2d(inchannel, self.kernel_elnum * 2, kernel_size, padding)
@@ -64,7 +63,7 @@ class DeformableConv2d(nn.Module):
         # (b, h, w, 2N)
         p = p.contiguous().permute(0, 2, 3, 1)
         # floor是向下取整
-        q_lt = Variable(p.data, requires_grad=False).floor()
+        q_lt = p.detach().floor()
         # +1相当于向上取整
         q_rb = q_lt + 1
 
@@ -112,6 +111,7 @@ class DeformableConv2d(nn.Module):
                    g_rt.unsqueeze(dim=1) * x_q_rt
 
         x_offset = self._reshape_x_offset(x_offset, ks)
+        return x_offset
 
     def _get_p_n(self, N, dtype):
         p_n_x, p_n_y = np.meshgrid(range(-(self.kernel_size-1)//2, (self.kernel_size-1)//2+1),
@@ -172,5 +172,7 @@ class DeformableConv2d(nn.Module):
         return x_offset
 
     def init_weight(self):
-
-        pass
+        self.offset_conv.weight.zero_()
+        if self.offset_conv.bias is not None:
+            self.offset_conv.bias.zero_()
+        self.dconv.weight.data = torch.ones(self.dconv.weight.size())
