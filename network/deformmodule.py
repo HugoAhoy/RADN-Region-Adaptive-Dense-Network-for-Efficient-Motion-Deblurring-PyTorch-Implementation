@@ -7,7 +7,7 @@ import torch.nn as nn
 import numpy as np
 
 class DeformableConv2d(nn.Module):
-    def __init__(self, inchannel, outchannel, kernel_size, padding = None):
+    def __init__(self, inchannel, outchannel, kernel_size, padding = None, offset_bias = None, dconv_bias = None):
         super(DeformableConv2d, self).__init__()
         self.inc = inchannel
         self.outc = outchannel
@@ -20,8 +20,8 @@ class DeformableConv2d(nn.Module):
         self.kernel_elnum = kernel_size * kernel_size # here kernel_elnum refers to the N = |R| in DCN paper
 
 
-        self.offset_conv = nn.Conv2d(inchannel, self.kernel_elnum * 2, kernel_size, padding)
-        self.dconv = nn.Conv2d(inchannel, outchannel, kernel_size, kernel_size)
+        self.offset_conv = nn.Conv2d(inchannel, self.kernel_elnum * 2,kernel_size,stride=1, padding=padding, bias=offset_bias)
+        self.dconv = nn.Conv2d(inchannel, outchannel, kernel_size, kernel_size, bias = dconv_bias)
         self.init_weight()
 
     def forward(self, x):
@@ -38,7 +38,7 @@ class DeformableConv2d(nn.Module):
         # N=kernel_elnum
         N = offset.size(1) // 2
 
-        # 将offset的顺序从[x1, y1, x2, y2, ...] 改成[x1, x2, .... y1, y2, ...]
+        # 将offset的顺序从[x1, y1, x2, y2, ...] 改成[x1, x2, .... y1, y2, ...],方便后续操作
         offsets_index = torch.cat([torch.arange(0, 2 * N, 2), torch.arange(1, 2 * N + 1, 2)]).type_as(x).long()
 
         # torch.unsqueeze()是为了增加维度
@@ -172,7 +172,7 @@ class DeformableConv2d(nn.Module):
         return x_offset
 
     def init_weight(self):
-        self.offset_conv.weight.zero_()
+        self.offset_conv.weight.data = torch.zeros_like(self.offset_conv.weight)
         if self.offset_conv.bias is not None:
-            self.offset_conv.bias.zero_()
-        self.dconv.weight.data = torch.ones(self.dconv.weight.size())
+            self.offset_conv.bias.data = torch.zeros_like(self.offset_conv.bias)
+        self.dconv.weight.data = torch.ones_like(self.dconv.weight)
