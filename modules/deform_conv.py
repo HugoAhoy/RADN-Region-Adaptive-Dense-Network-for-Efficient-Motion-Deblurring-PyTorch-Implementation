@@ -97,3 +97,37 @@ class DeformConvPack(DeformConv):
                                           self.deformable_groups,
                                           self.im2col_step)
 
+'''
+Above is the official implementation of DCN.
+Here is my Deformable Layer.
+'''
+class DeformableLayer(nn.Module):
+    def __init__(self,in_channels, out_channels,
+                kernel_size, stride, padding, 
+                dilation=1, groups=1, deformable_groups=1, im2col_step=64, 
+                dconv_bias = True, offset_bias=True, lr_mult=0.1):
+        super(DeformableLayer,self).__init__()
+        self.dconv = DeformConv(in_channels, out_channels,
+                kernel_size, stride, padding, 
+                dilation, groups, deformable_groups, im2col_step, 
+                dconv_bias)
+        offset_out_channels = self.deformable_groups * 2 * self.kernel_size[0] * self.kernel_size[1]
+        self.offset_conv = nn.Conv2d(in_channels,
+                                          offset_out_channels,
+                                          kernel_size=kernel_size,
+                                          stride=stride,
+                                          padding=padding,
+                                          bias=offset_bias)
+        self.offset_conv.lr_mult = lr_mult
+        self.init_weights()
+    
+    def init_weights(self):
+        self.offset_conv.weight.data.zero_()
+        if self.offset_conv.bias is not None:
+            self.offset_conv.bias.data.zero_()
+        # TODO: should the dconv be initialized?
+    
+    def forward(self, input):
+        offset = self.offset_conv(input)
+        out = self.dconv(input, offset)
+        return out
