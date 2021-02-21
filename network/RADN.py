@@ -34,12 +34,6 @@ class DensePart(nn.Module):
         x6 = self.DenseBlock3(x5)
         return x2, x4, x6
 
-class DDM(nn.Module):
-    def __init__(self):
-        super(DDM, self).__init__()
-    def forward(self, input):
-        pass
-
 class RADN(nn.Module):
     def __init__(self):
         super(RADN, self).__init__()
