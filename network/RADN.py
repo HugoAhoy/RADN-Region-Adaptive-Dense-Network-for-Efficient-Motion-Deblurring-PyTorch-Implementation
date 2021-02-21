@@ -45,9 +45,9 @@ class RADN(nn.Module):
         self.DDM1 = DDM(6, self.growthrate, self.growthrate // 2, 0.5)
         self.DDM2 = DDM(6, self.growthrate, self.growthrate // 2, 0.5)
         self.DDM3 = DDM(6, self.growthrate, self.growthrate // 2, 0.5)
-        self.transconv1 = nn.ConvTranspose2d(self.growthrate // 2, self.growthrate // 2, kernel_size=2, stride=2)
-        self.transconv2 = nn.ConvTranspose2d(self.growthrate // 2, self.growthrate // 2, kernel_size=2, stride=2)
-        self.transconv3 = nn.ConvTranspose2d(self.growthrate // 2, self.growthrate // 2, kernel_size=2, stride=2)
+        self.transconv1 = nn.ConvTranspose2d(self.growthrate // 2, self.growthrate, kernel_size=2, stride=2)
+        self.transconv2 = nn.ConvTranspose2d(self.growthrate // 2, self.growthrate, kernel_size=2, stride=2)
+        self.transconv3 = nn.ConvTranspose2d(self.growthrate // 2, self.growthrate, kernel_size=2, stride=2)
         # TODO:self.reconstruction
 
     def forward(self, input):
