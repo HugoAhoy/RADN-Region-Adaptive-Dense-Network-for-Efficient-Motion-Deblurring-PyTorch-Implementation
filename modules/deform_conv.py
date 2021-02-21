@@ -103,7 +103,7 @@ Here is my Deformable Layer.
 '''
 class DeformableLayer(nn.Module):
     def __init__(self,in_channels, out_channels,
-                kernel_size, stride, padding, 
+                kernel_size, stride=1, padding=0, 
                 dilation=1, groups=1, deformable_groups=1, im2col_step=64, 
                 dconv_bias = True, offset_bias=True, lr_mult=0.1):
         super(DeformableLayer,self).__init__()
@@ -111,7 +111,8 @@ class DeformableLayer(nn.Module):
                 kernel_size, stride, padding, 
                 dilation, groups, deformable_groups, im2col_step, 
                 dconv_bias)
-        offset_out_channels = self.deformable_groups * 2 * self.kernel_size[0] * self.kernel_size[1]
+        kernel_size = _pair(kernel_size)
+        offset_out_channels = deformable_groups * 2 * kernel_size[0] * kernel_size[1]
         self.offset_conv = nn.Conv2d(in_channels,
                                           offset_out_channels,
                                           kernel_size=kernel_size,

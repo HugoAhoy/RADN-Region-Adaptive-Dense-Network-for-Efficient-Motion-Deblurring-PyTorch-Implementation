@@ -5,9 +5,10 @@
 import torch
 import torch.nn as nn
 import numpy as np
+from modules.deform_conv import DeformableLayer
 
 class DeformableConv2d(nn.Module):
-    def __init__(self, inchannel, outchannel, kernel_size, padding = None, offset_bias = None, dconv_bias = None):
+    def __init__(self, inchannel, outchannel, kernel_size=3, stride=1, padding = None, offset_bias = None, dconv_bias = None):
         super(DeformableConv2d, self).__init__()
         self.inc = inchannel
         self.outc = outchannel
@@ -20,8 +21,8 @@ class DeformableConv2d(nn.Module):
         self.kernel_elnum = kernel_size * kernel_size # here kernel_elnum refers to the N = |R| in DCN paper
 
 
-        self.offset_conv = nn.Conv2d(inchannel, self.kernel_elnum * 2,kernel_size,stride=1, padding=padding, bias=offset_bias)
-        self.dconv = nn.Conv2d(inchannel, outchannel, kernel_size, kernel_size, bias = dconv_bias)
+        self.offset_conv = nn.Conv2d(inchannel, self.kernel_elnum * 2,kernel_size,stride = stride, padding=padding, bias=offset_bias)
+        self.dconv = nn.Conv2d(inchannel, outchannel, kernel_size, kernel_size, bias = dconv_bias) # padding will be done in expanding feature map function
         self.init_weight()
 
     def forward(self, x):
@@ -84,6 +85,7 @@ class DeformableConv2d(nn.Module):
         # torch.rt() 逐元素比较input和other，即是否input > other
         mask = torch.cat([p[..., :N].lt(self.padding) + p[..., :N].gt(x.size(2) - 1 - self.padding),
                           p[..., N:].lt(self.padding) + p[..., N:].gt(x.size(3) - 1 - self.padding)], dim=-1).type_as(p)
+        # mask 表示对应位置是处于原始图像外
         mask = mask.detach()
         # 相当于求双线性插值中的u和v
         floor_p = p - (p - torch.floor(p))
@@ -176,3 +178,21 @@ class DeformableConv2d(nn.Module):
         if self.offset_conv.bias is not None:
             self.offset_conv.bias.data = torch.zeros_like(self.offset_conv.bias)
         self.dconv.weight.data = torch.ones_like(self.dconv.weight)
+
+class DDM(nn.Module):
+    def __init__(self, num_layer, growthrate, num_input_features, compress_ratio):
+        super(DDM, self).__init__()
+        for i in range(num_layer):
+            layer = DeformableLayer(num_input_features + i*growthrate, growthrate, (3,3), padding = 1)
+            self.add_module('densedeformlayer{}'.format(i), layer)
+        finallayer = num_input_features + (num_layer-1)*growthrate
+        self.compress_conv = nn.Conv2d(finallayer, int(finallayer*compress_ratio), (1,1))
+    
+    def forward(self, input):
+        features = [input]
+        for i in range(self.num_layer):
+            x = torch.cat(feature,1)
+            output = getattr(self, 'densedeformlayer{}'.format(i))(x)
+            features.append(output)
+        out = self.compress_conv(torch.cat(features, 1))
+        return out
