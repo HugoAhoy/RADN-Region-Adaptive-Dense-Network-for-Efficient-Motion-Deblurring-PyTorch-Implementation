@@ -4,7 +4,7 @@ from collections import OrderedDict
 
 class Bottleneck(nn.Module):
     def __init__(self, inchannel, growthrate, bn_size):
-        super(Bottleneck, self).__init()
+        super(Bottleneck, self).__init__()
         self.innerchannel = growthrate*bn_size
         self.bn = nn.BatchNorm2d(inchannel)
         self.relu = nn.ReLU(inplace=True)
@@ -22,7 +22,7 @@ class DenseLayer(nn.Module):
         super(DenseLayer, self).__init__()
         self.bn = nn.BatchNorm2d(inchannel)
         self.relu = nn.ReLU(inplace=True)
-        self.conv = nn.Conv2d(inchannel, growthrate, kernel_size=3, bias=False)
+        self.conv = nn.Conv2d(inchannel, growthrate, kernel_size=3, padding = 1, bias=False)
 
     def forward(self, *inputs):
         if len(inputs) == 1:
@@ -37,13 +37,13 @@ class DenseLayer(nn.Module):
 class DenseLayer_B(nn.Module):
     def __init__(self, num_feature_map, growthrate, bn_size):
         super(DenseLayer_B, self).__init__()
-        self.dense_b = nn.Sequential(OrderedDict([
-            ('bottleneck', Bottleneck(num_feature_map, growthrate, bn_size)),
-            ('vanilladenselayer', DenseLayer(growthrate*bn_size, growthrate))
-        ]))
+        self.bottleneck=Bottleneck(num_feature_map, growthrate, bn_size)
+        self.vanilladenselayer=DenseLayer(growthrate*bn_size, growthrate)
 
     def forward(self, *inputs):
-        return self.denselayer(inputs)
+        x = self.bottleneck(*inputs)
+        out = self.vanilladenselayer(x)
+        return out
 
 class DenseBlock(nn.Module):
     def __init__(self, num_layer, growthrate, num_input_features, bn_size):
