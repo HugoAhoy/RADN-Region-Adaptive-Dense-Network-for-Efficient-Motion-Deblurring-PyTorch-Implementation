@@ -182,16 +182,17 @@ class DeformableConv2d(nn.Module):
 class DDM(nn.Module):
     def __init__(self, num_layer, growthrate, num_input_features, compress_ratio):
         super(DDM, self).__init__()
+        self.num_layer = num_layer
         for i in range(num_layer):
             layer = DeformableLayer(num_input_features + i*growthrate, growthrate, (3,3), padding = 1)
             self.add_module('densedeformlayer{}'.format(i), layer)
-        finallayer = num_input_features + (num_layer-1)*growthrate
+        finallayer = num_input_features + num_layer*growthrate
         self.compress_conv = nn.Conv2d(finallayer, int(finallayer*compress_ratio), (1,1))
     
     def forward(self, input):
         features = [input]
         for i in range(self.num_layer):
-            x = torch.cat(feature,1)
+            x = torch.cat(features,1)
             output = getattr(self, 'densedeformlayer{}'.format(i))(x)
             features.append(output)
         out = self.compress_conv(torch.cat(features, 1))
