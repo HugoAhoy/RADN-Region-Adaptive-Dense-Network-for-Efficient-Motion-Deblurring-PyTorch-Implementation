@@ -7,8 +7,9 @@ class SA(nn.Module):
         self.num_features = num_features
         self.query_conv = nn.Conv2d(num_features, num_features//8, 1, bias = False)
         self.key_conv = nn.Conv2d(num_features, num_features//8, 1, bias = False)
-        self.value_conv = nn.Conv2d(num_features, num_features//8, 1, bias = False)
+        self.value_conv = nn.Conv2d(num_features, num_features, 1, bias = False)
         self.softmax = nn.Softmax(dim = -1)
+        self.gamma = nn.Parameter(torch.zeros(1))
 
     def forward(self, input):
         batchsize, C, H, W = input.size()
@@ -19,4 +20,5 @@ class SA(nn.Module):
         value = self.value_conv(input).view(batchsize, -1, H*W)  # B * C * N
         out = torch.bmm(value,attention.permute(0,2,1)) # B*C*N
         out = out.view(batchsize,C,H,W) # B*C*H*W
+        out = out * self.gamma + input
         return out
